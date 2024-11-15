@@ -1,3 +1,4 @@
+import { Address } from "viem";
 import { Board } from "../game-logic/board";
 
 export enum MatchState{
@@ -10,20 +11,29 @@ export enum MatchState{
 
 export class Match{
     public match_id: number;
-    public player1_address: string;
-    public player2_address?: string;
+
+    public player1_ephemeral_public_key: string;
+    public player2_ephemeral_public_key?: string;
+
     public match_status: MatchState;
     public board: Board = new Board("xxxxxcxcxcxcxcXxxxxxaxaxaxaxaXxxxxxiiiiiiiiiiXXXXXXXXXXXXXXXxxxxxIIIIIIIIIIXxxxxxAxAxAxAxAXxxxxxCxCxCxCxCX");
 
-    constructor(match_id: number, player1_address: string){
+    constructor(match_id: number, player1_ephemeral_public_key: string){
         this.match_id = match_id;
-        this.player1_address = player1_address;
+        this.player1_ephemeral_public_key = player1_ephemeral_public_key;
         this.match_status = MatchState.FINDING;
     }
 
+    public simulate(){
+        if(this.match_status != MatchState.STARTED){
+            return;
+        }
+        this.board.simulate();
+    }
+
     //some other player join the match
-    public playerJoined(player2_address: string){
-        this.player2_address = player2_address;
+    public playerJoined(player2_ephemeral_public_key: string){
+        this.player2_ephemeral_public_key = player2_ephemeral_public_key;
         this.match_status = MatchState.READY;
     }
 

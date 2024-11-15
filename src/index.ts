@@ -1,3 +1,5 @@
+//websocket 8080
+
 import * as ws from "ws";
 const PORT = 8080;
 

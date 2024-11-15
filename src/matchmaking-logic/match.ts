@@ -1,3 +1,5 @@
+import { Board } from "../game-logic/board";
+
 export enum MatchState{
     FINDING,    //finding another player to join the match
     READY,      //ready for people to predict on the match
@@ -11,6 +13,7 @@ export class Match{
     public player1_address: string;
     public player2_address?: string;
     public match_status: MatchState;
+    public board: Board = new Board("xxxxxcxcxcxcxcXxxxxxaxaxaxaxaXxxxxxiiiiiiiiiiXXXXXXXXXXXXXXXxxxxxIIIIIIIIIIXxxxxxAxAxAxAxAXxxxxxCxCxCxCxCX");
 
     constructor(match_id: number, player1_address: string){
         this.match_id = match_id;

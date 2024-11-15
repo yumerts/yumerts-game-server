@@ -1,12 +1,20 @@
-//websocket 8080
+import { MatchmakingServer } from "./match-making-server";
+import { GameServer } from "./game-server";
+import { HttpServerPort } from "./constants/ports";
+import * as express from "express"; 
+import { Application, Request, Response, NextFunction } from 'express';
 
-import * as ws from "ws";
-const PORT = 8080;
+let matchmakingServer = new MatchmakingServer();
+let gameServer = new GameServer();
 
-const server = new ws.WebSocketServer({ port: PORT }, () => {
-    console.log(`Server started on port ${PORT}`);
+//create a http server with express
+const app = express();
+const port = HttpServerPort;
+
+app.get('/', (req, res) => {
+    res.send('Hello World!');
 });
 
-server.on("connection", function (wsConnection, _incomingMessage) {
-    wsConnection.send("Connected to server");
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });

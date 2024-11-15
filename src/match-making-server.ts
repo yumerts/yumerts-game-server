@@ -9,6 +9,9 @@ export class MatchmakingServer{
         });
         this.server.on("connection", function (wsConnection, _incomingMessage) {
             wsConnection.send("Connected to server");
+            wsConnection.on("message", function (message) {
+                console.log(message);
+            })
         });
     }
 }

@@ -1,11 +1,13 @@
 import { GameServerPort } from "./constants/ports";
 import * as ws from "ws";
-import { Match, MatchState } from "./matchmaking-logic/match";
+import { Match, MatchState, ReadyState } from "./matchmaking-logic/match";
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
+import { PushAPI } from '@pushprotocol/restapi';
 
 import { matchmaking_contract_event_abi } from "./constants/matchmaking-contract-event-abi";
 import { prediction_contract_event_abi } from "./constants/prediction-contract-event-abi";
+import e from "express";
 
 dotenv.config();
 
@@ -19,11 +21,14 @@ export class GameServer{
 
     private server: ws.WebSocketServer;
     public match!: Match[];
-    
+    public pushUser: PushAPI | undefined;
+
     private matchmaking_contract: ethers.Contract;
     private prediction_contract: ethers.Contract;
 
     constructor(){
+
+        pushUser
 
         this.match = [];
         const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
@@ -83,17 +88,37 @@ export class GameServer{
             if(existingMatch){
                 existingMatch.endMatch();
             }
-            this.match = this.match.filter(m => m.match_id !== match_id);
-
             //the match ends when the server has identified that the match has indeed been ended.
+        });
+
+        this.prediction_contract.on("placed_prediction", (match_id: number, predictor: string, party: number, stake: number) => {
+            //somebody has placed prediction
+            let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            console.log("A prediction has been placed on: ", match_id, predictor, party, stake);
+            if(existingMatch){
+                existingMatch.addPrediction(match_id, predictor);
+            }
+
+            //using push notification to send a "prediction placed" notification
+        });
+
+        this.prediction_contract.on("prediction_results_available", (match_id: number, winner: number) => {
+            let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            console.log("A match has been successfully ended: ", match_id, winner);
+            if(existingMatch){
+                for(let predictor in existingMatch.getWinningPredictors(winner)){
+                    //Send a push notification to each of them
+                }
+                this.match = this.match.filter(m => m.match_id !== match_id);
+            }
         });
 
         this.server.on("connection", (wsConnection, _incomingMessage) => {
             wsConnection.send("connected to server");
             wsConnection.on("message", async (message: string) => {
                 //message can only come in this three format
-                // {"type": "create_match", "match_id": number, signature: string} //signature is signed using the match_id as the message
                 // {"type": "join_match", "match_id": number, signature: string} //signature is signed using the match_id as the message
+                // {"type": "attendance", "match_id": number, "signature": string, "player": number} //signature is signed using the match_id + player as the message
                 // {"type": "input": "data": {"match_id": number, "player": number, "input": {troopId: number, targetCoordinate: {x: number, y: number}}}, "signature": string} //signature is signed using the match_id + player + input as the message
                 // end the process if the message is not parsable at all
                 let parsedMessage: any;
@@ -102,9 +127,7 @@ export class GameServer{
                 } catch(e){
                     return;
                 }
-
-                // check if it is of type "create_match"
-                if(parsedMessage.type === "create_match"){
+                if(parsedMessage.type === "join_match"){
                     //check if match exists or not
                     //if it exists get the player1 address from the match
                     //check if the signature is valid
@@ -114,30 +137,54 @@ export class GameServer{
                     if(!existingMatch){
                         return;
                     }
-                    if(!isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
-                        return;
-                    }
-                    existingMatch.player1_ws_connection = wsConnection as unknown as WebSocket;
 
-                    this.matchmaking_contract.createMatch(parsedMessage.match_id);
-                }else if(parsedMessage.type === "join_match"){
-                    //check if match exists or not
-                    //if it exists get the player1 address from the match
-                    //check if the signature is valid
-                    //if it is valid, allow to connect
-                    //else, disconnect the connection
-                    let existingMatch: Match | undefined = this.match.find(m => m.match_id === parsedMessage.match_id);
-                    if(!existingMatch){
+                    if(existingMatch.match_status != MatchState.READY){
                         return;
                     }
-                    if(!isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
+
+                    if(isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
+                        //player 1
+                        existingMatch.player1_ws_connection = wsConnection as unknown as WebSocket;
+                    }else if(isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player2_public_address ?? "") ){
+                        //player 2
+                        existingMatch.player2_ws_connection = wsConnection as unknown as WebSocket;
+                    }else{
                         return;
                     }
-                    existingMatch.player2_ws_connection = wsConnection as unknown as WebSocket;
-                    existingMatch.match_status = MatchState.READY;
+
+                    if(existingMatch.player1_ws_connection && existingMatch.player2_ws_connection){
+                        existingMatch.match_ready_status = ReadyState.REQUEST_FOR_ATTENDANCE;;
+                    }
 
                     this.matchmaking_contract.joinMatch(parsedMessage.match_id);
-                }else if(parsedMessage.type === "input"){
+                }else if(parsedMessage.type == "attendance"){
+                    //check if match exists or not
+                    //if it exists get the player1 address from the match
+                    //check if the signature is valid
+                    //if it is valid, allow to connect
+                    //else, disconnect the connection
+                    let existingMatch: Match | undefined = this.match.find(m => m.match_id === parsedMessage.match_id);
+                    if(!existingMatch){
+                        return;
+                    }
+
+                    if(existingMatch.match_status != MatchState.READY){
+                        return;
+                    }
+
+                    let player: number = parsedMessage.player;
+                    if(!isValidSignature(parsedMessage.match_id.toString() + player.toString(), parsedMessage.signature, player == 1 ? existingMatch.player1_public_address : existingMatch.player2_public_address ?? "")){
+                        return;
+                    }
+
+                    (player == 1)? existingMatch.player1_signed = true : existingMatch.player2_signed = true;
+
+                    if(existingMatch.player1_signed && existingMatch.player2_signed){
+                        existingMatch.match_ready_status = ReadyState.READY;
+                    }
+                    //existingMatch.requestForAttendance();
+                }
+                else if(parsedMessage.type === "input"){
                     //check if match exists or not
                     //if it exists get the player1 address from the match
                     //check if the signature is valid

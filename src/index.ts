@@ -14,9 +14,13 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!');
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+//poll this api to get the matches
+app.get('api/v1/matches', (req: Request, res: Response) => {
+    //get all the matches in gameServer.match regardless of its state and send it to client
+    //foreach match use getMatchInfo function
+    let matchInfo = gameServer.match.map(match => match.getMatchInfo());
+    res.send(matchInfo);
+})
 
 setInterval(() => {
     gameServer.match.forEach(function(match) {

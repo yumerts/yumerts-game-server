@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@pushprotocol/restapi": "^1.7.29",
     "@types/express": "^5.0.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.4",

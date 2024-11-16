@@ -12,15 +12,18 @@ export enum MatchState{
 export class Match{
     public match_id: number;
 
-    public player1_ephemeral_public_key: string;
-    public player2_ephemeral_public_key?: string;
+    public player1_public_address: string;
+    public player2_public_address?: string;
+
+    public player1_ws_connection: WebSocket;
+    public player2_ws_connection: WebSocket;
 
     public match_status: MatchState;
     public board: Board = new Board("xxxxxcxcxcxcxcXxxxxxaxaxaxaxaXxxxxxiiiiiiiiiiXXXXXXXXXXXXXXXxxxxxIIIIIIIIIIXxxxxxAxAxAxAxAXxxxxxCxCxCxCxCX");
 
-    constructor(match_id: number, player1_ephemeral_public_key: string){
+    constructor(match_id: number, player1_public_address: string){
         this.match_id = match_id;
-        this.player1_ephemeral_public_key = player1_ephemeral_public_key;
+        this.player1_public_address = player1_public_address;
         this.match_status = MatchState.FINDING;
     }
 
@@ -32,8 +35,8 @@ export class Match{
     }
 
     //some other player join the match
-    public playerJoined(player2_ephemeral_public_key: string){
-        this.player2_ephemeral_public_key = player2_ephemeral_public_key;
+    public playerJoined(player2_public_address: string){
+        this.player2_public_address = player2_public_address;
         this.match_status = MatchState.READY;
     }
 
@@ -41,7 +44,7 @@ export class Match{
         this.match_status = MatchState.STARTED;
     }
 
-    public endMatch(){
+    public endMatch(){    
         this.match_status = MatchState.ENDED;
     }
 }

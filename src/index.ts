@@ -2,6 +2,7 @@ import { GameServer } from "./game-server";
 import { HttpServerPort } from "./constants/ports";
 import * as express from "express"; 
 import { Application, Request, Response, NextFunction } from 'express';
+import { MatchState } from "./matchmaking-logic/match";
 
 let gameServer = new GameServer();
 
@@ -18,5 +19,12 @@ app.listen(port, () => {
 });
 
 setInterval(() => {
-    gameServer.match.forEach(match => match.simulate());
+    gameServer.match.forEach(function(match) {
+        match.simulate();
+        if(match.match_status == MatchState.STARTED){
+            let board_state = match.board.getBoardState();
+            match.player1_ws_connection.send(board_state);
+            match.player2_ws_connection.send(board_state);
+        }
+    });
 }, 250);

@@ -87,9 +87,11 @@ export class Board{
         return this.troops.some(troop => troop.currentCoordinate.x == coordinate.x && troop.currentCoordinate.y == coordinate.y);
     }
     
-    order(troopId: number, targetCoordinate: Coordinate){
+    order(player: number, troopId: number, targetCoordinate: Coordinate){
         let troop = this.troops.find(troop => troop.troopId === troopId);
-        if(troop === undefined){
+
+        //check if player and the troop faction is the same
+        if (troop === undefined || troop.faction !== (player - 1)){
             return;
         }
 

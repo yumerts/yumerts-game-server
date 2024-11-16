@@ -1,4 +1,8 @@
+import { ethers } from "ethers";
 import { Board } from "../game-logic/board";
+import { getInternalWallet } from "../utils/getInternalWallet";
+import { matchmaking_contract_abi } from "../constants/matchmaking-contract-abi";
+import { Faction } from "../game-logic/troop";
 
 export enum MatchState{
     FINDING,    //finding another player to join the match
@@ -110,6 +114,23 @@ export class Match{
 
         this.player1_ws_connection?.send(JSON.stringify(dataSchema));
         this.player2_ws_connection?.send(JSON.stringify(dataSchema));
+
+        const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
+
+        const matchmakingContractAddress = process.env.MATCH_INFO_SMART_CONTRACT_ADDRESS;
+        console.log("Matchmaking contract address: ", matchmakingContractAddress);
+        if (!matchmakingContractAddress) {
+            throw new Error("MATCHMAKING_CONTRACT_ADDRESS is not defined");
+        }
+
+        const signer = new ethers.Wallet(getInternalWallet(), provider);
+        const signedContract = new ethers.Contract(matchmakingContractAddress, matchmaking_contract_abi, signer);
+        signedContract.endMatch(this.match_id, this.board.getWinner() == Faction.KINGDOM? 1: 2);
+
+        //end the match in the smart contract
+        //endMatch(uint256 match_id, uint256 winner) external
+
+
         this.match_status = MatchState.ENDED;
     }
 

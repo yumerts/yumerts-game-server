@@ -149,7 +149,7 @@ export class GameServer{
             //using push notification to send a "prediction placed" notification
             sendPushNotification(
                 [predictor], 
-                "You have placed a prediction!", "You have spent " + stake + " USDC on Match: " + match_id + " with " + party + " as your target!", 
+                "You have placed a prediction!", "You have spent " + stake/1000000 + " USDC on Match: " + match_id + " with " + party + " as your target!", 
                 NotificationCategory.General, 
                 "push"
             );

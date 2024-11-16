@@ -95,12 +95,12 @@ export class Board{
     }
     
     check_game_over(){
-        let kingdomTroops = this.troops.filter(troop => troop.faction === Faction.KINGDOM);
-        let empireTroops = this.troops.filter(troop => troop.faction === Faction.EMPIRE);
+        let kingdomTroops = this.troops.filter(troop => troop.faction == Faction.KINGDOM);
+        let empireTroops = this.troops.filter(troop => troop.faction == Faction.EMPIRE);
 
-        if(kingdomTroops.length === 0){
+        if(kingdomTroops.length == 0){
             this.winner = Faction.EMPIRE;
-        }else if(empireTroops.length === 0){
+        }else if(empireTroops.length == 0){
             this.winner = Faction.KINGDOM;
         }
     }

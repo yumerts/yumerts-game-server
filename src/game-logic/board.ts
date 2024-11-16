@@ -71,7 +71,7 @@ export class Board{
         });
         
         //console.log(troopStates);
-        return JSON.stringify(troopStates);
+        return troopStates;
     }
 
     updateOrder(troopId: number, targetCoordinate: Coordinate){

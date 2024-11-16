@@ -107,6 +107,9 @@ export class Match{
                 winner: this.board.getWinner()
             }
         }
+
+        this.player1_ws_connection?.send(JSON.stringify(dataSchema));
+        this.player2_ws_connection?.send(JSON.stringify(dataSchema));
         this.match_status = MatchState.ENDED;
     }
 

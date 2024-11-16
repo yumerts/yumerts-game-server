@@ -37,5 +37,8 @@ setInterval(() => {
     gameServer.match.forEach(function(match) {
         match.simulate();
         match.sendBoardState();
+        if (match.board.getWinner()) {
+            match.endMatch();
+        }
     });
 }, 250);

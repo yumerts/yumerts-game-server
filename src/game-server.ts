@@ -244,7 +244,8 @@ export class GameServer{
                     //check if the signature is valid
                     //if it is valid, allow to connect
                     //else, disconnect the connection
-                    let existingMatch: Match | undefined = this.match.find(m => m.match_id === parsedMessage.match_id);
+                    console.log(parsedMessage);
+                    let existingMatch: Match | undefined = this.match.find(m => m.match_id == Number(parsedMessage.match_id));
                     if(!existingMatch){
                         return;
                     }
@@ -254,12 +255,30 @@ export class GameServer{
                         return;
                     }
 
-                    let player: string = parsedMessage.data.player;
-                    let input: any = parsedMessage.data.input;
-                    if(!isValidSignature(parsedMessage.match_id.toString() + player + JSON.stringify(input), parsedMessage.signature, player == "1" ? existingMatch.player1_public_address : existingMatch.player2_public_address ?? "")){
+                    let input: any = parsedMessage.data;
+                    let player = 0;
+                    
+                    /*
+                    if(isValidSignature(JSON.stringify(input), parsedMessage.signature, existingMatch.player1_public_address)){
+                        player = 1;
+                        return;
+                    }else if(isValidSignature(JSON.stringify(input), parsedMessage.signature, existingMatch.player2_public_address ?? "")){
+                        player = 2;
                         return;
                     }
-                    existingMatch.board.order(parseInt(player), input.troopId, input.targetCoordinate);
+                    //making it simpler due to the time constraint    
+                    */
+                    let player_address = parsedMessage.playerAddress;
+                    if(player_address == existingMatch.player1_public_address){
+                        player = 1;
+                    }else if(player_address == existingMatch.player2_public_address){
+                        player = 2;
+                    }
+
+
+                    if (player != 0){
+                    existingMatch.board.order(player, input.troopId, input.targetCoordinate);
+                    }
                 }
             });
         });

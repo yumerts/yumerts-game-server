@@ -2,6 +2,7 @@ import { Board } from "../game-logic/board";
 
 export enum MatchState{
     FINDING,    //finding another player to join the match
+    MATCHED,    //another player has joined the match
     READY,      //ready for people to predict on the match
     STARTED,    //match has started
     ENDED,      //match has ended
@@ -31,6 +32,7 @@ export class Match{
 
     public player1_ws_connection?: WebSocket;
     public player2_ws_connection?: WebSocket;
+    public spectator_ws_connections: WebSocket[] = [];
 
     public match_status: MatchState;
     public match_ready_status: ReadyState;
@@ -79,7 +81,7 @@ export class Match{
     //some other player join the match
     public playerJoined(player2_public_address: string){
         this.player2_public_address = player2_public_address;
-        this.match_status = MatchState.READY;
+        this.match_status = MatchState.MATCHED;
         
     }
 
@@ -92,17 +94,10 @@ export class Match{
             }
         }
 
-        this.match_status = MatchState.STARTED;
-    }
+        this.player1_ws_connection?.send(JSON.stringify(dataSchema));
+        this.player2_ws_connection?.send(JSON.stringify(dataSchema));
 
-    public requestForAttendance(){
-        let dataSchema: SendingSchema = {
-            type: "request_for_attendance",
-            data: {
-                match_id: this.match_id
-            }
-        }
-        this.match_ready_status = ReadyState.REQUEST_FOR_ATTENDANCE;    
+        this.match_status = MatchState.STARTED;
     }
 
     public endMatch(){    

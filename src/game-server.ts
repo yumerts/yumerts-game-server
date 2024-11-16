@@ -5,16 +5,19 @@ import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import { PushAPI } from '@pushprotocol/restapi';
 
-import { matchmaking_contract_event_abi } from "./constants/matchmaking-contract-event-abi";
-import { prediction_contract_event_abi } from "./constants/prediction-contract-event-abi";
+import { matchmaking_contract_abi, matchmaking_contract_event_abi } from "./constants/matchmaking-contract-abi";
+import { prediction_contract_event_abi } from "./constants/prediction-contract-abi";
 import e from "express";
 import { ENV } from "@pushprotocol/restapi/src/lib/constants";
+import {getInternalWallet} from "./utils/getInternalWallet";
 
 dotenv.config();
 
 const isValidSignature = (message: string, signature: string, address: string): boolean => {
-    const messageHash = ethers.id(message);
-    const recoveredAddress = ethers.recoverAddress(messageHash, signature);
+    const messageHash = ethers.hashMessage(message);
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    console.log("recovered address: ", recoveredAddress);
+    console.log("actual address: ", address);
     return recoveredAddress.toLowerCase() === address.toLowerCase();
 };
 
@@ -50,7 +53,7 @@ export class GameServer{
                 return;
             }
             await this.pushUser.channel.send(recipients, {
-                channel: "eip155:421614:"+process.env.CHANNEL_ADDRESS,
+                channel: "eip155:421614:"+process.env.PUSH_PROTOCOL_CHANNEL_ADDRESS,
                 notification: { 
                     title: title,
                     body: description 
@@ -66,8 +69,10 @@ export class GameServer{
 
         this.match = [];
         const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
+        provider.pollingInterval = 2000;
         
         const matchmakingContractAddress = process.env.MATCH_INFO_SMART_CONTRACT_ADDRESS;
+        console.log("Matchmaking contract address: ", matchmakingContractAddress);
         if (!matchmakingContractAddress) {
             throw new Error("MATCHMAKING_CONTRACT_ADDRESS is not defined");
         }
@@ -98,12 +103,14 @@ export class GameServer{
             if(existingMatch){
                 existingMatch.playerJoined(player2);
             }
+            
+            console.log(player2);
 
             sendPushNotification(
                 [existingMatch?.player1_public_address ?? "", player2], 
                 "Join the match now!", "A player has joined the match", 
                 NotificationCategory.Critical, 
-                "join"
+                `join ${match_id}` 
             );
             //notify both players via push protocol
             //both player 1 and player 2 will be notified with a push protocol link to connect to the game server
@@ -163,6 +170,8 @@ export class GameServer{
             }
         });
 
+        console.log("Listening to blockchain events");
+
         this.server.on("connection", (wsConnection, _incomingMessage) => {
             wsConnection.send("connected to server");
             wsConnection.on("message", async (message: string) => {
@@ -183,56 +192,51 @@ export class GameServer{
                     //check if the signature is valid
                     //if it is valid, allow to connect
                     //else, disconnect the connection
-                    let existingMatch: Match | undefined = this.match.find(m => m.match_id === parsedMessage.match_id);
+                    
+                    console.log(this.match[0].getMatchInfo());
+                    let existingMatch: Match | undefined = this.match.find(m => m.match_id == Number(parsedMessage.match_id));
                     if(!existingMatch){
                         return;
                     }
+                    console.log("joining match " + parsedMessage.match_id);
 
-                    if(existingMatch.match_status != MatchState.READY){
+                    if(existingMatch.match_status == MatchState.FINDING){
                         return;
                     }
 
                     if(isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
                         //player 1
+                        console.log("player 2 has connected")
                         existingMatch.player1_ws_connection = wsConnection as unknown as WebSocket;
                     }else if(isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player2_public_address ?? "") ){
                         //player 2
+                        console.log("player 1 has connected")
                         existingMatch.player2_ws_connection = wsConnection as unknown as WebSocket;
                     }else{
-                        return;
+                        console.log("A spectator has connected")
+                        existingMatch.spectator_ws_connections.push(wsConnection as unknown as WebSocket);
+                        //spectator
                     }
 
                     if(existingMatch.player1_ws_connection && existingMatch.player2_ws_connection){
-                        existingMatch.match_ready_status = ReadyState.REQUEST_FOR_ATTENDANCE;;
+                        existingMatch.match_ready_status = ReadyState.BUFFER;;
+                        existingMatch.match_status = MatchState.READY;
+
+                        const signer = new ethers.Wallet(getInternalWallet(), provider);
+                        const signedContract = new ethers.Contract(matchmakingContractAddress, matchmaking_contract_abi, signer);
+                        signedContract.openPredictionMarket(parsedMessage.match_id).then((tx: any) => {
+                            console.log(tx);
+                        })
+
+                        //wait for 30 seconds asyncly without blocking the main thread
+                        //before a contract function call is sent
+                        setTimeout(async () => {
+                            existingMatch.match_status = MatchState.STARTED;
+                            existingMatch.startMatch();
+                        }, 30000);
                     }
 
-                    this.matchmaking_contract.joinMatch(parsedMessage.match_id);
-                }else if(parsedMessage.type == "attendance"){
-                    //check if match exists or not
-                    //if it exists get the player1 address from the match
-                    //check if the signature is valid
-                    //if it is valid, allow to connect
-                    //else, disconnect the connection
-                    let existingMatch: Match | undefined = this.match.find(m => m.match_id === parsedMessage.match_id);
-                    if(!existingMatch){
-                        return;
-                    }
-
-                    if(existingMatch.match_status != MatchState.READY){
-                        return;
-                    }
-
-                    let player: number = parsedMessage.player;
-                    if(!isValidSignature(parsedMessage.match_id.toString() + player.toString(), parsedMessage.signature, player == 1 ? existingMatch.player1_public_address : existingMatch.player2_public_address ?? "")){
-                        return;
-                    }
-
-                    (player == 1)? existingMatch.player1_signed = true : existingMatch.player2_signed = true;
-
-                    if(existingMatch.player1_signed && existingMatch.player2_signed){
-                        existingMatch.match_ready_status = ReadyState.READY;
-                    }
-                    //existingMatch.requestForAttendance();
+                    //this.matchmaking_contract.joinMatch(parsedMessage.match_id);
                 }
                 else if(parsedMessage.type === "input"){
                     //check if match exists or not

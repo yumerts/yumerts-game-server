@@ -4,7 +4,9 @@
         "module": "commonjs",
         "outDir": "./dist",
         "strict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "maxNodeModuleJsDepth": 10
     },
-    "include": ["src/index.ts", "src/game-server.ts", "src/matchmaking-logic/match.ts", "src/*"]
+    "include": ["src/*"]
 }

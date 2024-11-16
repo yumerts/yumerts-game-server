@@ -48,6 +48,9 @@ export class GameServer{
             console.log("A match has been created: ", match_id, player1);
             let newMatch = new Match(match_id, player1);
             this.match.push(newMatch);
+
+            //we do not notify the player because the contract has been successfully created, the moment it has been created,
+            //the player 1 will be aware of it, and it will display on the matchmaking homepage
         });
 
         this.matchmaking_contract.on("matchJoined", (match_id: number, player2: string) => {
@@ -58,7 +61,9 @@ export class GameServer{
             }
 
             //notify both players via push protocol
-            
+            //both player 1 and player 2 will be notified with a push protocol link to connect to the game server
+            //if the player is in game, a pop up screen would appear to ask the user to confirm the joining process
+            //if the player is outside of game (for example) another website, a sample notification with link that points to the game should appear
         });
 
         this.matchmaking_contract.on("matchStarted", (match_id: number, player1: string, player2: string) => {
@@ -67,6 +72,9 @@ export class GameServer{
             if(existingMatch){
                 existingMatch.startMatch();
             }
+
+            //the match starts when both users are connected to the server
+            //both of them approve of starting the game
         });
 
         this.matchmaking_contract.on("matchEnded", (match_id: number, winner: string) => {
@@ -76,6 +84,8 @@ export class GameServer{
                 existingMatch.endMatch();
             }
             this.match = this.match.filter(m => m.match_id !== match_id);
+
+            //the match ends when the server has identified that the match has indeed been ended.
         });
 
         this.server.on("connection", (wsConnection, _incomingMessage) => {

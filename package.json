@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc ./src/index.ts --outDir build",
+    "build": "tsc --outDir build",
     "start": "node ./build/index.js",
     "start:dev": "pnpm run build && pnpm run start"
   },
@@ -12,14 +12,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@phala/dstack-sdk": "^0.1.4",
     "@types/express": "^5.0.0",
-    "@types/ws": "^8.5.13",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.4",
     "express": "^4.21.1",
-    "typescript": "^5.6.3",
-    "viem": "^2.21.45",
+    "ts-node": "^10.9.2",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.6.3"
   }
 }

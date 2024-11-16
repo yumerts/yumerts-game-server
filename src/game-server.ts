@@ -28,13 +28,13 @@ export class GameServer{
         this.match = [];
         const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
         
-        const matchmakingContractAddress = process.env.MATCHMAKING_CONTRACT_ADDRESS;
+        const matchmakingContractAddress = process.env.MATCH_INFO_SMART_CONTRACT_ADDRESS;
         if (!matchmakingContractAddress) {
             throw new Error("MATCHMAKING_CONTRACT_ADDRESS is not defined");
         }
         this.matchmaking_contract = new ethers.Contract(matchmakingContractAddress, matchmaking_contract_event_abi, provider);
 
-        const predictionContractAddress = process.env.PREDICTION_CONTRACT_ADDRESS;
+        const predictionContractAddress = process.env.PREDICTION_SMART_CONTRACT_ADDRESS;
         if (!predictionContractAddress) {
             throw new Error("PREDICTION_CONTRACT_ADDRESS is not defined");
         }
@@ -56,6 +56,9 @@ export class GameServer{
             if(existingMatch){
                 existingMatch.playerJoined(player2);
             }
+
+            //notify both players via push protocol
+            
         });
 
         this.matchmaking_contract.on("matchStarted", (match_id: number, player1: string, player2: string) => {

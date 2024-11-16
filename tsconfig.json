@@ -1,12 +1,10 @@
 {
     "compilerOptions": {
-      "target": "ESNext",
-      "module": "commonjs",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "lib": ["esnext"],
-      "forceConsistentCasingInFileNames": true,
-      "maxNodeModuleJsDepth": 10
-    }
+        "target": "ES2023",
+        "module": "commonjs",
+        "outDir": "./dist",
+        "strict": true,
+        "esModuleInterop": true
+    },
+    "include": ["src/index.ts", "src/game-server.ts", "src/matchmaking-logic/match.ts", "src/*"]
 }

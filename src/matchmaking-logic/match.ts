@@ -1,4 +1,3 @@
-import { Address } from "viem";
 import { Board } from "../game-logic/board";
 
 export enum MatchState{
@@ -15,6 +14,7 @@ class SendingSchema{
 }
 
 export class Match{
+    [x: string]: any;
     public match_id: number;
 
     public player1_public_address: string;
@@ -108,5 +108,14 @@ export class Match{
             }
         }
         this.match_status = MatchState.ENDED;
+    }
+
+    public getMatchInfo(){
+        return {
+            match_id: this.match_id,
+            player1_public_address: this.player1_public_address,
+            player2_public_address: this.player2_public_address,
+            match_status: this.match_status
+        }
     }
 }

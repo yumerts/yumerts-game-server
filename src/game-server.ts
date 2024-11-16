@@ -2,7 +2,7 @@ import { GameServerPort } from "./constants/ports";
 import * as ws from "ws";
 import { Match, MatchState } from "./matchmaking-logic/match";
 import { ethers } from "ethers";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 
 import { matchmaking_contract_event_abi } from "./constants/matchmaking-contract-event-abi";
 import { prediction_contract_event_abi } from "./constants/prediction-contract-event-abi";
@@ -18,14 +18,15 @@ const isValidSignature = (message: string, signature: string, address: string): 
 export class GameServer{
 
     private server: ws.WebSocketServer;
-    public match: Match[];
+    public match!: Match[];
     
     private matchmaking_contract: ethers.Contract;
     private prediction_contract: ethers.Contract;
 
     constructor(){
 
-        const provider = new ethers.JsonRpcProvider("https://sepolia-rollup.arbitrum.io/rpc");
+        this.match = [];
+        const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
         
         const matchmakingContractAddress = process.env.MATCHMAKING_CONTRACT_ADDRESS;
         if (!matchmakingContractAddress) {
@@ -44,12 +45,14 @@ export class GameServer{
         });
 
         this.matchmaking_contract.on("matchCreated", (match_id: number, player1: string) => {
+            console.log("A match has been created: ", match_id, player1);
             let newMatch = new Match(match_id, player1);
             this.match.push(newMatch);
         });
 
         this.matchmaking_contract.on("matchJoined", (match_id: number, player2: string) => {
             let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            console.log("A match has been joined: ", match_id, player2);
             if(existingMatch){
                 existingMatch.playerJoined(player2);
             }
@@ -57,6 +60,7 @@ export class GameServer{
 
         this.matchmaking_contract.on("matchStarted", (match_id: number, player1: string, player2: string) => {
             let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            console.log("A match has been started: ", match_id, player1, player2);
             if(existingMatch){
                 existingMatch.startMatch();
             }
@@ -64,14 +68,16 @@ export class GameServer{
 
         this.matchmaking_contract.on("matchEnded", (match_id: number, winner: string) => {
             let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            console.log("A match has ended: ", match_id, winner);
             if(existingMatch){
                 existingMatch.endMatch();
             }
+            this.match = this.match.filter(m => m.match_id !== match_id);
         });
 
-        this.server.on("connection", function (wsConnection , _incomingMessage) {
+        this.server.on("connection", (wsConnection, _incomingMessage) => {
             wsConnection.send("connected to server");
-            wsConnection.on("message", async function(message: string){
+            wsConnection.on("message", async (message: string) => {
                 //message can only come in this three format
                 // {"type": "create_match", "match_id": number, signature: string} //signature is signed using the match_id as the message
                 // {"type": "join_match", "match_id": number, signature: string} //signature is signed using the match_id as the message
@@ -98,7 +104,7 @@ export class GameServer{
                     if(!isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
                         return;
                     }
-                    existingMatch.player1_ws_connection = wsConnection;
+                    existingMatch.player1_ws_connection = wsConnection as unknown as WebSocket;
 
                     this.matchmaking_contract.createMatch(parsedMessage.match_id);
                 }else if(parsedMessage.type === "join_match"){
@@ -114,7 +120,7 @@ export class GameServer{
                     if(!isValidSignature(parsedMessage.match_id.toString(), parsedMessage.signature, existingMatch.player1_public_address)){
                         return;
                     }
-                    existingMatch.player2_ws_connection = wsConnection;
+                    existingMatch.player2_ws_connection = wsConnection as unknown as WebSocket;
                     existingMatch.match_status = MatchState.READY;
 
                     this.matchmaking_contract.joinMatch(parsedMessage.match_id);
@@ -141,7 +147,6 @@ export class GameServer{
                     }
                     existingMatch.board.order(parseInt(player), input.troopId, input.targetCoordinate);
                 }
-            
             });
         });
     }

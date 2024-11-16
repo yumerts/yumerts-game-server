@@ -2,7 +2,9 @@ import { Coordinate } from "./coordinate";
 import { Faction, getAttackDamage, getAttackRange, Troop, TroopType } from "./troop";
 
 export class Board{
+    
     troops: Troop[];
+    winner: Faction | undefined;
 
     /// boardFormation is a string of maximum 400 characters, each character represents a cell on the board
     /// the character X to mention that line will be empty starting from that cell
@@ -58,6 +60,10 @@ export class Board{
         }
     }
 
+    public getWinner(){
+        return this.winner;
+    }
+
     getBoardState(){
         let troopStates: { troopId: number; troopType: String; faction: String; hp: number; currentCoordinate: Coordinate; targetCoordinate: Coordinate | undefined; attackingCoordinate: Coordinate | undefined }[] = [];
         this.troops.forEach(troop => {
@@ -81,12 +87,24 @@ export class Board{
         this.attack();
         this.move();
         this.find_targets();
+        this.check_game_over();
     }
 
     isTaken(coordinate: Coordinate){
         return this.troops.some(troop => troop.currentCoordinate.x == coordinate.x && troop.currentCoordinate.y == coordinate.y);
     }
     
+    check_game_over(){
+        let kingdomTroops = this.troops.filter(troop => troop.faction === Faction.KINGDOM);
+        let empireTroops = this.troops.filter(troop => troop.faction === Faction.EMPIRE);
+
+        if(kingdomTroops.length === 0){
+            this.winner = Faction.EMPIRE;
+        }else if(empireTroops.length === 0){
+            this.winner = Faction.KINGDOM;
+        }
+    }
+
     order(player: number, troopId: number, targetCoordinate: Coordinate){
         let troop = this.troops.find(troop => troop.troopId === troopId);
 

@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+      "target": "ESNext",
+      "module": "commonjs",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "lib": ["esnext"],
+      "forceConsistentCasingInFileNames": true,
+      "maxNodeModuleJsDepth": 10
+    }
+}

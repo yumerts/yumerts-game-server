@@ -11,7 +11,6 @@ export enum Faction{
     EMPIRE      //Red team
 }
 
-
 /// <summary>
 /// returns the attack range of a particular troopType
 /// </summary>
@@ -89,6 +88,9 @@ export class Troop {
     currentCoordinate: Coordinate
     targetCoordinate?: Coordinate;
 
+    attackingTroopId?: number;
+    attackingCoordinate?: Coordinate;
+
     constructor(troopId: number, troopType: TroopType, faction: Faction, startingCoordinate: Coordinate){
         this.troopId = troopId;
         this.troopType = troopType;
@@ -97,6 +99,8 @@ export class Troop {
         this.hp = 100;
         this.currentCoordinate = startingCoordinate;
         this.targetCoordinate = undefined;
+        this.attackingTroopId = undefined;
+        this.attackingCoordinate = undefined;
     }
 
     getMoveCoordinate(){
@@ -158,7 +162,8 @@ export class Troop {
             faction: this.faction.toString(),
             hp: this.hp,
             currentCoordinate: this.currentCoordinate,
-            targetCoordinate: this.targetCoordinate
+            targetCoordinate: this.targetCoordinate,
+            attackingCoordinate: this.attackingCoordinate
         }
     }
 }

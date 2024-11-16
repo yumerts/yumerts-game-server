@@ -6,4 +6,8 @@ export class Coordinate {
         this.x = x;
         this.y = y;
     }
+
+    distanceTo(coordinate: Coordinate){
+        return Math.abs(this.x - coordinate.x) + Math.abs(this.y - coordinate.y);
+    }
 }

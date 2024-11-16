@@ -7,3 +7,5 @@ RUN tsc ./src/index.ts --outDir build
 CMD ["node","./build/index.js"]
 
 EXPOSE 8080
+EXPOSE 8081
+EXPOSE 8082

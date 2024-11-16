@@ -8,6 +8,7 @@ import { PushAPI } from '@pushprotocol/restapi';
 import { matchmaking_contract_event_abi } from "./constants/matchmaking-contract-event-abi";
 import { prediction_contract_event_abi } from "./constants/prediction-contract-event-abi";
 import e from "express";
+import { ENV } from "@pushprotocol/restapi/src/lib/constants";
 
 dotenv.config();
 
@@ -16,6 +17,11 @@ const isValidSignature = (message: string, signature: string, address: string): 
     const recoveredAddress = ethers.recoverAddress(messageHash, signature);
     return recoveredAddress.toLowerCase() === address.toLowerCase();
 };
+
+enum NotificationCategory{
+    General, //react-hot-toast
+    Critical //modal-notifications
+}
 
 export class GameServer{
 
@@ -28,7 +34,35 @@ export class GameServer{
 
     constructor(){
 
-        pushUser
+        const pushUserSetup = async () => {
+            const privateKey = process.env.PUSH_PROTOCOL_CHANNEL_PRIV_KEY;
+            if (!privateKey) {
+                throw new Error("PUSH_PROTOCOL_CHANNEL_PRIV_KEY is not defined");
+            }
+            const signer = new ethers.Wallet(privateKey);
+            this.pushUser = await PushAPI.initialize(signer, {
+                env: ENV.STAGING
+            })
+        }
+
+        const sendPushNotification = async (recipients: string[], title: string, description: string, category: NotificationCategory, cta: string) =>{
+            if(!this.pushUser){
+                return;
+            }
+            await this.pushUser.channel.send(recipients, {
+                channel: "eip155:421614:"+process.env.CHANNEL_ADDRESS,
+                notification: { 
+                    title: title,
+                    body: description 
+                },
+                payload: {
+                    title: title,
+                    body: description,
+                    category: category,
+                    cta: cta
+                }
+            })
+        }
 
         this.match = [];
         const provider = new ethers.JsonRpcProvider(process.env.PROVIDER_URL);
@@ -65,6 +99,12 @@ export class GameServer{
                 existingMatch.playerJoined(player2);
             }
 
+            sendPushNotification(
+                [existingMatch?.player1_public_address ?? "", player2], 
+                "Join the match now!", "A player has joined the match", 
+                NotificationCategory.Critical, 
+                "join"
+            );
             //notify both players via push protocol
             //both player 1 and player 2 will be notified with a push protocol link to connect to the game server
             //if the player is in game, a pop up screen would appear to ask the user to confirm the joining process
@@ -100,15 +140,25 @@ export class GameServer{
             }
 
             //using push notification to send a "prediction placed" notification
+            sendPushNotification(
+                [predictor], 
+                "You have placed a prediction!", "You have spent " + stake + " USDC on Match: " + match_id + " with " + party + " as your target!", 
+                NotificationCategory.General, 
+                "push"
+            );
         });
 
         this.prediction_contract.on("prediction_results_available", (match_id: number, winner: number) => {
             let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
             console.log("A match has been successfully ended: ", match_id, winner);
             if(existingMatch){
-                for(let predictor in existingMatch.getWinningPredictors(winner)){
-                    //Send a push notification to each of them
-                }
+                sendPushNotification(
+                    existingMatch.getWinningPredictors(winner), 
+                    "Prediction Won!",
+                    "You have won the prediction for the match: " + match_id, 
+                    NotificationCategory.General, 
+                    "push"
+                );
                 this.match = this.match.filter(m => m.match_id !== match_id);
             }
         });
@@ -209,5 +259,7 @@ export class GameServer{
                 }
             });
         });
+
+        pushUserSetup();
     }
 }

@@ -79,31 +79,6 @@ export class Match{
     //some other player join the match
     public playerJoined(player2_public_address: string){
         this.player2_public_address = player2_public_address;
-
-        let to_player1_schema: SendingSchema = {
-            type: "match_joined",
-            data: {
-                match_id: this.match_id,
-                opponent_public_address: player2_public_address
-            }
-        }
-
-        let to_player2_schema: SendingSchema = {
-            type: "match_joined",
-            data: {
-                match_id: this.match_id,
-                opponent_public_address: this.player1_public_address
-            }
-        }
-
-        if (this.player1_ws_connection) {
-            this.player1_ws_connection.send(JSON.stringify(to_player1_schema));
-        }
-
-        if (this.player2_ws_connection) {
-            this.player2_ws_connection.send(JSON.stringify(to_player2_schema));
-        }
-
         this.match_status = MatchState.READY;
         
     }

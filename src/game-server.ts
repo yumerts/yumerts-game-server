@@ -130,11 +130,17 @@ export class GameServer{
         });
 
         this.matchmaking_contract.on("matchEnded", (match_id: number, winner: string) => {
-            let existingMatch: Match | undefined = this.match.find(m => m.match_id === match_id);
+            let existingMatch: Match | undefined = this.match.find(m => m.match_id == match_id);
             console.log("A match has ended: ", match_id, winner);
             if(existingMatch){
-                existingMatch.endMatch();
+                //existingMatch.endMatch();
             }
+            sendPushNotification(
+                [existingMatch?.player1_public_address ?? "", existingMatch?.player2_public_address ?? ""], 
+                "The match has been ended with " + winner + "'s victory!", "The match has been ended with " + winner + "'s victory!",
+                NotificationCategory.General, 
+                "push"
+            );
             //the match ends when the server has identified that the match has indeed been ended.
         });
 
@@ -163,6 +169,14 @@ export class GameServer{
                     existingMatch.getWinningPredictors(winner), 
                     "Prediction Won!",
                     "You have won the prediction for the match: " + match_id, 
+                    NotificationCategory.General, 
+                    "push"
+                );
+
+                sendPushNotification(
+                    existingMatch.getLosingPredictors(winner), 
+                    "Prediction Lost!",
+                    "You have lost the prediction for the match: " + match_id, 
                     NotificationCategory.General, 
                     "push"
                 );

@@ -9,7 +9,7 @@ import { matchmaking_contract_abi, matchmaking_contract_event_abi } from "./cons
 import { prediction_contract_event_abi } from "./constants/prediction-contract-abi";
 import e from "express";
 import { ENV } from "@pushprotocol/restapi/src/lib/constants";
-import {getInternalWallet} from "./utils/getInternalWallet";
+import { getTEEPrivKey } from "./utils/deriveKey";
 
 dotenv.config();
 
@@ -38,7 +38,7 @@ export class GameServer{
     constructor(){
 
         const pushUserSetup = async () => {
-            const privateKey = process.env.PUSH_PROTOCOL_CHANNEL_PRIV_KEY;
+            const privateKey = getTEEPrivKey();
             if (!privateKey) {
                 throw new Error("PUSH_PROTOCOL_CHANNEL_PRIV_KEY is not defined");
             }
@@ -236,7 +236,7 @@ export class GameServer{
                         existingMatch.match_ready_status = ReadyState.BUFFER;;
                         existingMatch.match_status = MatchState.READY;
 
-                        const signer = new ethers.Wallet(getInternalWallet(), provider);
+                        const signer = new ethers.Wallet(getTEEPrivKey(), provider);
                         const signedContract = new ethers.Contract(matchmakingContractAddress, matchmaking_contract_abi, signer);
                         signedContract.openPredictionMarket(parsedMessage.match_id).then((tx: any) => {
                             console.log(tx);

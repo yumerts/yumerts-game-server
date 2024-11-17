@@ -4,6 +4,13 @@ import express from "express";
 import { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { MatchState } from "./matchmaking-logic/match";
+import {TappdClient} from '@phala/dstack-sdk'
+import { getTEEPublicKey } from "./utils/deriveKey";
+import 'dotenv/config'
+
+export const dynamic = 'force-dynamic'
+
+const endpoint = process.env.DSTACK_SIMULATOR_ENDPOINT || 'http://localhost:8090'
 
 let gameServer = new GameServer();
 
@@ -28,8 +35,21 @@ app.post('/api/v1/matches', (_req: Request, res: Response) => {
     ));
 })
 
+app.get('/api/tdxquote', async (req: Request, res: Response) => {
+    const client = new TappdClient(endpoint)
+    const randomNumString = Math.random().toString();
+    // Generate Remote Attestation Quote based on a random string of data
+    const getRemoteAttestation = await client.tdxQuote(randomNumString);
+    // Return Remote Attestation result
+    res.status(200).json({ getRemoteAttestation });
+});
+
+app.get('/api/tee_wallet_address', async (req: Request, res: Response) => {
+    res.status(200).json({ TEE_Wallet_Address: getTEEPublicKey() });
+});
+
 app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`);
+    console.log(`TEE App is running at http://localhost:${port}`);
 });
 
 

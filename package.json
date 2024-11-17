@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@phala/dstack-sdk": "^0.1.4",
     "@pushprotocol/restapi": "^1.7.29",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

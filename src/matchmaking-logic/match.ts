@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { Board } from "../game-logic/board";
-import { getInternalWallet } from "../utils/getInternalWallet";
+import { getTEEPrivKey } from "../utils/deriveKey";
 import { matchmaking_contract_abi } from "../constants/matchmaking-contract-abi";
 import { Faction } from "../game-logic/troop";
 
@@ -123,7 +123,7 @@ export class Match{
             throw new Error("MATCHMAKING_CONTRACT_ADDRESS is not defined");
         }
 
-        const signer = new ethers.Wallet(getInternalWallet(), provider);
+        const signer = new ethers.Wallet(getTEEPrivKey(), provider);
         const signedContract = new ethers.Contract(matchmakingContractAddress, matchmaking_contract_abi, signer);
         signedContract.endMatch(this.match_id, this.board.getWinner() == Faction.KINGDOM? 1: 2);
 
